@@ -25,7 +25,7 @@ ping
 |★|Command-Line Quiz|Unknown|100|396||
 |★|Entry form|Web/Network|100|189||
 ||Bonsai XSS Revolutions|Web/Network|200|49||
-|★|Exec dmesg|Binary|300|175||
+|★|Exec dmesg|Binary|300|175|kubo39|
 |★|Decrypt it|Crypto|300|199||
 ||QR puzzle (Web)|Unknown|400|31||
 ||QR puzzle (Nonogram)|Unknown|300|51||
@@ -39,7 +39,7 @@ ping
 ||Steganography 2|Stegano|100|18||
 |★|Steganography 3|Stegano|100|172|xmisao|
 |★|4042|Unknown|100|63|xmisao|
-||Individual Elebin|Binary|200|18||
+||Individual Elebin|Binary|200|18|kubo39|
 ||SYSCALL: Impossible|Exploit|500|16||
 ||Please give me MD5 collision files|Crypto|400|5||
 ||Reverse-Engineering Hardware 2|Binary|500|10||
@@ -139,6 +139,58 @@ ruby hex2bin.rb haffman.txt
 ## Bonsai XSS Revolutions
 
 ## Exec dmesg
+
+https://github.com/SECCON/SECCON2015_online_CTF/tree/master/Binary/300_Exec%20dmesg
+
+### 問題
+
+>Please find secret message from the iso linux image.
+>image.zip
+>秘密のメッセージをLinuxのisoイメージの中から見つけてください。
+>image.zip
+
+### 概要
+
+zipファイルを解凍するとisoファイルがある。
+
+```
+$ file core-current.iso
+core-current.iso: # ISO 9660 CD-ROM filesystem data 'TC-Core' (bootable)
+```
+
+qemuで起動するとx86_64なtiny kernelが立ち上がる。
+
+```
+$ qemu-system-x86_64 -cdrom core-current.iso
+```
+
+イメージを起動するとプロンプトが表示され、ホームディレクトリには意味のあるものがなさそうだったので、表題にある `dmesg` を実行してみる。
+
+```
+$ dmesg
+dmsg: applet not found
+$which dmesg
+/bin/dmesg
+$ls -ll /bin/dmesg
+/bin/dmesg -> busybox
+```
+
+`dmesg` コマンドは `busybox` を指すようになっているが、`busybox` 側には `dmesg` は入っていなかった。
+
+ちなみに `busybox` は便利コマンドを単一のバイナリにまとめたユーティリティで、組み込み用途などで使われる。
+
+`dmesg` で表示されるのと同じ内容が `/dev/kmsg` にあるので、そこをみる。
+
+`cat /dev/kmsg | grep SECCON` でフラグを見つけた。
+
+### 解答のポイント
+
+`dmesg` が `exec >/dev/kmsg 2&>1` であることを知ってるかの知識問題。
+
+### ツール
+
+* qemu(一式あるとよい)
+* file
 
 ## Decrypt it
 
@@ -301,6 +353,68 @@ gvim utf32.txt
 
 ## Individual Elebin
 
+### 問題
+
+https://github.com/SECCON/SECCON2015_online_CTF/tree/master/Binary/200_Individual%20Elebin
+
+>Execute all ELF files
+>Individual_Elebin.zip
+>すべてのELFファイルを実行せよ
+>Individual_Elebin.zip
+
+### 概要
+
+全ての実行形式ファイルを実行して出力された結果をつなげるだけの問題、だけども多種多様なアーキテクチャのバイナリが容易されている。
+
+```
+$ file *.bin
+1.bin:  ELF 32-bit LSB  executable, Intel 80386, version 1 (FreeBSD), statically linked, stripped
+10.bin: ELF 32-bit LSB  executable, ARM, version 1, statically linked, stripped
+11.bin: ELF 32-bit MSB  executable, MIPS, MIPS-I version 1 (SYSV), statically linked, stripped
+2.bin:  ELF 32-bit MSB  executable, MC68HC11, version 1 (SYSV), statically linked, stripped
+3.bin:  ELF 32-bit LSB  executable, NEC v850, version 1 (SYSV), statically linked, stripped
+4.bin:  ELF 32-bit MSB  executable, Renesas M32R, version 1 (SYSV), statically linked, stripped
+5.bin:  ELF 64-bit MSB  executable, Renesas SH, version 1 (SYSV), statically linked, stripped
+6.bin:  ELF 32-bit MSB  executable, SPARC version 1 (SYSV), statically linked, stripped
+7.bin:  ELF 32-bit LSB  executable, Motorola RCE, version 1 (SYSV), statically linked, stripped
+8.bin:  ELF 32-bit LSB  executable, Axis cris, version 1 (SYSV), statically linked, stripped
+9.bin:  ELF 32-bit LSB  executable, Atmel AVR 8-bit, version 1 (SYSV), statically linked, stripped
+```
+
+形式が `SECCON{...}` なので、 1.binと11.binは `strings` でそれぞれ `SECCON{AaA` と `eAaAq}` であることがわかった。
+
+他のバイナリに関して、最初はqemuのエミュレート機能を使ってみたけどうまく実行されないようだったので、gdbをソースからビルドしたときに生成されるエミュレート機能を利用することにした。
+
+一例を以下にあげる。
+
+```
+$ ./configure --target=m6811-elf --prefix="$HOME/opt/cross"
+```
+
+```
+( ՞ਊ ՞) :~/dev/ctf/elebin/Individual_Elebin $ $HOME/opt/cross/bin/m6811-elf-run 2.bin
+B( ՞ਊ ՞) :~/dev/ctf/elebin/Individual_Elebin $
+```
+
+というかんじでやっていたんだけれど、`5.bin` と `7.bin` がなかなか解けず。
+
+5.binは終了直前に64bitなのに気づいて(遅い) targetを `sh64` にして解けたけど `7.bin` は最後まで解けず。。
+
+後で他チームの解答みると最初に指定した `target=mcore` でよくて、gdb側のconfigureをいじらなくてはいけなかったらしい。
+
+### 解答のポイント
+
+解けてないですが、後一歩だった問題です。
+結構gdb知識問われる問題だし辛いのでは。。200の割に解けてる人少ないし。いや、普通にgdbで実行してもできるっちゃできるしそうでもないのか。。？
+あとアーキテクチャの知識がなくて辛かったので、そのへんも必要なんですかね、 `Motorola RCE` と `mcore` の対応関係が最後まで確信もてなくて `ppc` とかでビルドして試したりした時間が無駄だった。。
+
+64bitは、まあちゃんとarchみましょうねという話なのでダメダメだった。つらい。
+
+### ツール(一応？)
+
+* gdb
+* file
+
 ## SYSCALL: Impossible
 
 ## Please give me MD5 collision files
@@ -322,3 +436,9 @@ gvim utf32.txt
 RFCはしばらく読みたくない。
 特に4042では、ジョークRFCをほぼ完全に理解してしまい、精神的ダメージを負った。
 あとハフマン符号を手作業で読み解くのはもう嫌だ。
+
+### kubo39
+
+コミットした問題はExec dmesgの1問。得点でいうと300点ですね。低い。。
+
+問題選択とかなんか好き勝手させてもらって申し訳なかったです、なんか意地になってた。。Individual Elebin時間かかるなら他の問題解くほうがよかったのでは？？
