@@ -55,6 +55,79 @@ ping
 
 ## Fragment2
 
+### 問題
+
+https://github.com/SECCON/SECCON2015_online_CTF/tree/master/Web_Network/200_Fragment2
+
+> Decode me
+> fragment2.pcap
+
+### 概要
+
+PCAPファイルをデコードしてフラグを取り出す問題。
+PCAPファイルには正体不明の1パケットだけが含まれている。
+パケットのsrcポートが80であることから、HTTP通信の断片だと推測できる。
+このパケットはHTTP/2通信のパケットで、ヘッダがHPACK(RFC 7541)という方法で圧縮されている。
+HPACKの仕様に従ってヘッダをデコードすると、フラグ`SECCON{H++p2i5sOc0o|}`が得られる。
+
+* https://tools.ietf.org/html/rfc7541
+* http://syucream.github.io/hpack-spec-ja/rfc7541-ja.html (和訳)
+
+### 解答のポイント
+
+最新のRFCに対する知識もしくは気付きが重要。
+またツールが最新のRFCをサポートしているわけではないことを踏まえてアプローチしないといけない。
+
+古いWireshark(1.12.1)では、PCAPファイルをHTTP/2として正常にデコードできなかった。
+PCAPファイルをHTTP/2のヘッダとデータに分離するのに、新しいWireshark(2.0.0)を使用する必要があった。
+それでも、ヘッダ内のHPACK圧縮された内容はデコードできなかった。
+HPACK圧縮された内容は手作業で解析する必要があった。
+
+HPACK圧縮には一意のハフマン符号を使うことがRFCに書かれている。
+ハフマン符号はRFCの付録Bで定義されている。
+
+http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-10#appendix-B
+
+HPACK圧縮されたヘッダをビット列に変換すると以下になる。
+
+~~~~
+10001000110000111100001001000000100001011111001010110100101101000000111001101111100101001101110110000010111101011110110101011010011111111111111101100011111111110111111111101110101100010001100110110100011010100010000000001111111111110011111111111101000011110000110100000010001100010011011111000001110000001011111101000000100010011111001010110100111010010100110101100010010110101011101101010001001111110000000100110001
+~~~~
+
+ヘッダ全体を解析するには手間がかかるので、フラグにあたりをつけて読み解いた。
+ハフマン符号はわかっており、フラグは`SECCON{XXX}`の形だと推測されるので、まず`N{`と`}`がビット列に無いかを探した。
+幸い、`N{`と`}`のビット列が見つかったので、あとはその中身のハフマン符号を地道に読み解くことで解答できた。
+
+~~~~
+1101010 => O
+1101001 => N
+111111111111110 => {
+1100011 => H
+11111111011 => +
+11111111011 => +
+101011 => p
+00010 => 2
+00110 => i
+011011 => 5
+01000 => s
+1101010 => O
+00100 => c
+00000 => 0
+00111 => o
+11111111 100 => |
+11111111111101 => }
+~~~~
+
+### 使用ツール
+
+* Wireshark 2.0.0
+* Ruby
+  * hex2bin.rb -- スペース区切りの16進数文字列をビット列の文字列にするスクリプト
+
+~~~~sh
+ruby hex2bin.rb haffman.txt
+~~~~
+
 ## Reverse-Engineering Hardware 1
 
 ## Connect the server
@@ -91,7 +164,140 @@ ping
 
 ## Steganography 3
 
+### 問題
+
+https://github.com/SECCON/SECCON2015_online_CTF/tree/master/Stegano/100_Steganography%203
+
+>We can get desktop capture!
+>Read the secret message.
+>desktop_capture.png
+>
+>デスクトップのキャプチャに成功した！
+>秘密のメッセージを読み取ってほしい
+>desktop_capture.png
+
+### 概要
+
+デスクトップをキャプチャしたpngファイルが与えられる。
+pngファイルにはバイナリが書かれている。
+バイナリはELFヘッダの`ELF`という文字があるため、Linux等で実行可能とわかる。
+バイナリを打ち込んで、Linuxで実行すると`Rmxvb2QgZmlsbA0K`という文字列が出力される。
+この文字列は`Flood fill`をBASE64エンコードしたもの。
+pngファイルのバイナリエディタ部分を塗りつぶすと、フラグ`SECCON{the_hidden_message_ever}`が浮かび上がる。
+
+### 画像
+
+塗りつぶし前
+
+https://github.com/SECCON/SECCON2015_online_CTF/blob/master/Stegano/100_Steganography%203/desktop_capture.png
+
+塗りつぶし後
+
+https://seccon2015ping.slack.com/files/yuutaro35/F0G0AKX8B/desktop_capture.png
+
+### 解答のポイント
+
+問題が画像だというのがポイント。
+当日はみんなでバイナリを分担して打ち込み、それを結合して実行した。
+勘の良い人なら、バイナリを実行せずとも、画像を塗りつぶすことを思いつくかも知れない。
+
+バイナリは528バイトあり、入力の手間がかかる。
+実はBASE64エンコードした文字列は`00003C`から`00004B`に現れている。
+この部分がBASE64だと気づけば、バイナリをすべて打ち込んで実行することなく、`Flood fill`という文字列が得られる。
+
+早期の回答のためには、問題の傾向の理解と、エンコードされた文字列を目grepする力が必要。
+
+### 使用ツール
+
+* Oktate(例年使用しているKDEのバイナリエディタ)
+* `cat`
+* `base64`
+* `hexdump`
+
+`cat`による結合。
+
+~~~~sh
+cat 000_0FF.bin 100.bin 200new2.bin 0300_033F.bin > executable3
+~~~~
+
+`base64`によるBASE64文字列のデコード。
+
+~~~~sh
+echo 'Rmxvb2QgZmlsbA0K'|base64 -d
+~~~~
+
+`hexdump`で結合したバイナリファイルの内容を確認。
+
+~~~~sh
+hexdump executable3
+~~~~
+
 ## 4042
+
+### 問題
+
+https://github.com/SECCON/SECCON2015_online_CTF/tree/master/Unknown/100_4042
+
+>Unknown document is found in ancient ruins, in 2005.
+>Could you figure out what is written in the document?
+>no-network.txt
+>
+>謎の文章が2005年に古代遺跡から発見された。
+>これは何を意味している？
+>no-network.txt
+
+no-network.txt
+
+https://github.com/SECCON/SECCON2015_online_CTF/blob/master/Unknown/100_4042/no-network.txt
+
+### 概要
+
+問題タイトルと問題文をヒントに、テキストファイルを読み解く問題。
+テキストファイルは`0`から`7`までの文字だけで構成されていることから、8進数文字列だとわかる。
+
+タイトルの"4042"と"2005年に古代遺跡から発見された"がヒントで、これは2005年4月1日に発表されたジョークRFC、RFC 4042のこと。
+RFC 4042はUTF-9およびUTF-18というUnicode符号化方式について。
+
+* https://www.ietf.org/rfc/rfc4042.txt
+* http://www.kt.rim.or.jp/~ksk/joke-RFC/rfc4042j.txt (和訳)
+
+テキストファイルを8進数文字列として読み、UTF-9で符号化されているものと解釈すると、Unicodeのコードポイントが得られる。
+Unicodeのコードポイントを、何らかの方法で符号化して文字列化する。
+この文字列にフラグ`SECCON{A_GROUP_OF_NINE_BITS_IS_CALLED_NONET}`がマルチバイト文字で書かれている。
+
+### 解答のポイント
+
+ヒントからRFCにたどり着くこと。
+これは`4042 2005`とぐぐればわかるので、SECCONで出てきた謎の文字列はとりあえずぐぐると良い。
+
+あとはUTF-9の仕様理解がポイント。
+UTF-9は9ビット単位(ノネット)のUnicodeの符号化方式で、ノネットの先頭1ビット(以下、継続ビット)で継続を表し、残り8ビット(以下、コードポイント部)にUnicodeのコードポイントを格納する。
+
+継続ビットが`1`の場合、そのノネットのコードポイント部は、次のノネットのコードポイント部と結合することを示す。
+継続ビットが`0`の場合、そのノネットのコードポイント部で、Unicodeのコードポイントが終わりであることを示す。
+コードポイントが`U+0000`〜`U+00FF`までの文字は、継続ビットが`0`の1ノネット単独で表現される。
+
+ノネットは9ビット単位なので、8進数文字列では3文字が、1ノネットとなる。
+あとはノネット単位で、継続ビットを見ながらUnicodeコードポイントを取り出せば良い。
+Unicodeコードポイントは、32bit幅でバイナリ化すると、そのままUTF-32文字列に符号化できる。
+
+当初、国際的な大会だしASCII文字列だろうと思い込んでいたので、だいぶ時間を無駄にしてしまった。
+Unicodeの符号化方式なのだから、非ASCIIのUnicode文字なことを想定しておくべきだった。
+
+### 使用ツール
+
+* Ruby
+  * `oct2nonet.rb` -- 8進数文字列を3文字ずつ切り出して1行1ノネットにするスクリプト
+  * `nonet2unicode.rb` -- 1行1ノネットのテキストファイルを読み込んでUTF-32文字列を出力するスクリプト
+* GVim -- XTermでは表示できなかった…
+
+~~~~sh
+ruby oct2nonet.rb no-network.txt > nonet.txt
+ruby nonet2unicode.rb nonet.txt > utf32.txt
+gvim utf32.txt
+~~~~
+
+スクリプトと結果は`4042`ディレクトリ以下にpush済み。
 
 ## Individual Elebin
 
@@ -103,3 +309,16 @@ ping
 
 ## Last Challenge (Thank you for playing)
 
+## 所感
+
+### xmisao
+
+主にコミットした問題はSteganography 3, 4042, Fragment2の3問(解答順)。
+得点こそ合計400点と低いものの、Solvesがそれぞれ172, 63, 60と比較的少ないため、ある程度チームの得点の底上げができた。
+
+エンジンがかかったのが翌日に入ってからだったのは非常に申し訳ない…。
+人数も6人と多く、ガンガン解いてくれていたので、あまり得点は考えず、解けていない問題に集中して取り組めたのは良かった。
+
+RFCはしばらく読みたくない。
+特に4042では、ジョークRFCをほぼ完全に理解してしまい、精神的ダメージを負った。
+あとハフマン符号を手作業で読み解くのはもう嫌だ。
