@@ -15,23 +15,23 @@ ping
 
 |結果|Title|Genre|Points|Solves|解説者|
 |----|-----|-----|------|------|------|
-|★|Start SECCON CTF|Exercises|50|839||
-|★|SECCON WARS 2015|Stegano|100|312||
-|★|Unzip the file|Crypto|100|196||
+|★|Start SECCON CTF|Exercises|50|839|tsb|
+|★|SECCON WARS 2015|Stegano|100|312|tsb|
+|★|Unzip the file|Crypto|100|196|tsb|
 |★|Reverse-Engineering Android APK 1|Binary|100|287||
 |★|Fragment2|Web/Network|200|60|xmisao|
 ||Reverse-Engineering Hardware 1|Binary|400|20||
 |★|Connect the server|Web/Network|100|587||
-|★|Command-Line Quiz|Unknown|100|396||
+|★|Command-Line Quiz|Unknown|100|396|tsb|
 |★|Entry form|Web/Network|100|189||
 ||Bonsai XSS Revolutions|Web/Network|200|49||
 |★|Exec dmesg|Binary|300|175|kubo39|
-|★|Decrypt it|Crypto|300|199||
+|★|Decrypt it|Crypto|300|199|tsb|
 ||QR puzzle (Web)|Unknown|400|31||
 ||QR puzzle (Nonogram)|Unknown|300|51||
-||QR puzzle (Windows)|Unknown|200|138||
+||QR puzzle (Windows)|Unknown|200|138|tsb|
 ||Reverse-Engineering Android APK 2|Unknown|400|11||
-|★|Find the prime numbers|Crypto|200|54||
+|★|Find the prime numbers|Crypto|200|54|tsb|
 ||Micro computer exploit code challenge|Exploit|300|15||
 ||GDB Remote Debugging|Binary|200|60||
 ||FSB: TreeWalker|Exploit|200|51||
@@ -43,7 +43,7 @@ ping
 ||SYSCALL: Impossible|Exploit|500|16||
 ||Please give me MD5 collision files|Crypto|400|5||
 ||Reverse-Engineering Hardware 2|Binary|500|10||
-|★|Last Challenge (Thank you for playing)|Exercises|50|545||
+|★|Last Challenge (Thank you for playing)|Exercises|50|545|tsb|
 
 ## Start SECCON CTF
 
