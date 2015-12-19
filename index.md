@@ -20,7 +20,7 @@ ping
 |★|Unzip the file|Crypto|100|196|tsb|
 |★|Reverse-Engineering Android APK 1|Binary|100|287|kotetuco|
 |★|Fragment2|Web/Network|200|60|xmisao|
-||Reverse-Engineering Hardware 1|Binary|400|20||
+||Reverse-Engineering Hardware 1|Binary|400|20|kotetuco|
 |★|Connect the server|Web/Network|100|587|oppai|
 |★|Command-Line Quiz|Unknown|100|396|tsb|
 |★|Entry form|Web/Network|100|189|oppai|
@@ -79,7 +79,7 @@ ping
 
 ### 回答のポイント
 
-「1000回連続」というフレーズがあるので、まずはデコンパイルしたソースから1000という定数値が使われている場所がないかどうかを探す必要がある。
+「1000回連続」というフレーズがあるので、まずはデコンパイルしたソースから1000という定数の値が使われている場所がないかどうかを探す必要がある。
 
 幸いなことに、定数1000にあたる箇所はMainActivity.java内で容易に発見できた。
 
@@ -132,6 +132,13 @@ libcalc.soのcalc()の戻り値をXとすると、勝った回数は0なので�
 バイトコードのハックの仕方を見直して、手計算で求めなくても出てくるようにしたかった・・・。
 
 なお、プロセスメモリエディタを使用してメモリ内容をハックするという手もあったのかもしれないが、使用したプロセスメモリエディタ(MemSpector)はGenymotion上では上手く使えなかった。この辺はもう少し検証が必要かもしれない。
+
+(追記)
+
+soファイルのcalc()関数を解析する方法もあった。
+apkを動かすまでも無く解けたんだな・・・。
+
+[SECCON 2015 Online CTF Writeup](http://iwasi.hatenablog.jp/entry/2015/12/06/190557)
 
 ### 使用ツール
 
@@ -263,6 +270,42 @@ ruby hex2bin.rb haffman.txt
 ~~~~
 
 ## Reverse-Engineering Hardware 1
+
+### 問題
+
+    We've found some pictures of a decoder board and a program to produce a nice text.
+    
+    Please help us to get the text.
+    
+    gpio.py
+    ChristmasIllumiations.zip
+
+### 概要
+
+Rapsberry Pi(RPI)のGPIO出力をフリップフロップ等を経由して入力で受け、その入力からFlagが生成されるという問題。
+
+GPIO入出力の制御や入力値をFlagへ変換するためのPythonスクリプト、PRIを含めた動作している回路を様々なアングルから撮った写真からどのような回路なのかを特定し、Flagを解読しなければならない。
+
+### 回答のポイント
+
+RPIがあれば解ける、というわけではなく、結局写真の回路を特定し、入出力をシミュレートできることがこの問題の一番のポイントだと思う。
+
+自分がわかったのは、次のとおり。
+
++ Pythonスクリプトのおおよその処理の内容(GPIOの入力値から文字コードを生成していること、など)
++ 使用しているラズパイはRaspberry Pi 2 Model B
++ 使用しているGPIOのポート(入力、出力)
++ 写真に映っている論理回路の型番が74HC74AP？(フリップフロップが2個入ったIC)
+
+当たり前のように、上の情報だけでは解けないわけで・・・。特にLED周辺の配線がいろんな写真を見たものの、結局解読できなかった。
+
+解けなかった分際で特に言えることもそんなにないのだが、まず一つ言いたいことがあるとすれば、写真を解析するために高解像度のディスプレイを用意すべき、ということである(笑)。
+
+### Writeup
+
++ [「友利奈緒」さん](https://hackmd.io/s/4JhhsThNg)
++ [「@waidotto」さん](http://d.hatena.ne.jp/waidotto/20151206/1449409523)
++ [「東京工業大学 ロボット技術研究会」さん](http://titech-ssr.blog.jp/archives/1047119282.html)
 
 ## Connect the server
 
@@ -708,3 +751,17 @@ RFCはしばらく読みたくない。
 コミットした問題はExec dmesgの1問。得点でいうと300点ですね。低い。。
 
 問題選択とかなんか好き勝手させてもらって申し訳なかったです、なんか意地になってた。。Individual Elebin時間かかるなら他の問題解くほうがよかったのでは？？
+
+### kotetu
+
+自分が中心となって解いたのは「Reverse-Engineering Android APK 1」のみです。他は「Steganography 1」の画像ファイルへの分割作業を手伝った程度。
+
+「Reverse-Engineering Android APK 2」と「Reverse-Engineering Hardware 1」は、手をつけたもののダメでした。。まさか回路図を読むことになるとは・・・難しい。。
+
+Android問題が2問、RPI使った問題もあったりと、意外とマルチプラットフォームな感じだったなと。Androidは問題は出題しやすい気がするので、チームで一人くらい環境持っておくといいのかなと思いました(来年出る保証はないですが)。
+
+あと、回路図を読むような問題が2年連続(?)で出てるので、来年も回路図とか、もしくはIoTがらみの問題が出そうな気がします。
+
+ここからは単なる感想ですが、お誘いを受けるまではCTFすら知らない状態からのスタートでした。結果的には100点分しか解けずあまりチームに貢献できなかったですが、CTFが楽しいことがわかったので、またやってみたいです。
+
+チームのみんなに感謝です！
