@@ -18,7 +18,7 @@ ping
 |★|Start SECCON CTF|Exercises|50|839|tsb|
 |★|SECCON WARS 2015|Stegano|100|312|tsb|
 |★|Unzip the file|Crypto|100|196|tsb|
-|★|Reverse-Engineering Android APK 1|Binary|100|287||
+|★|Reverse-Engineering Android APK 1|Binary|100|287|kotetuco|
 |★|Fragment2|Web/Network|200|60|xmisao|
 ||Reverse-Engineering Hardware 1|Binary|400|20||
 |★|Connect the server|Web/Network|100|587|oppai|
@@ -52,6 +52,140 @@ ping
 ## Unzip the file
 
 ## Reverse-Engineering Android APK 1
+
+### 問題
+
+    Please win 1000 times in rock-paper-scissors
+    rps.apk
+
+### 概要
+
+24時間かけて1000連勝を目指すのも良い(笑)が、そのままだと1000連勝すること自体が至難の業のため、当然のようにapkをハックすることを考える必要がある。
+
+やった作業は、次のとおり。
+
++ Android環境構築
++ apkをjarへ変換(.dexファイルにまとめられている.classファイルに別れた)
++ .classファイルをデコンパイル
++ 該当クラスファイルの該当バイトコードのオペランド書き換え
++ 再apk化(jarからapkへ変換し、apkに署名を付加する)
++ 実行結果をもとにflagとなる数値を割り出す
+
+上記のとおり、ハックっぽいことはデコンパイルとバイトコード書き換えくらいで、その他はAndroid特有の事項ばかりである。むしろ、再apk化で手間取った(ただzipにするだけではダメで、jarsignerコマンドで署名をつける必要があった)。
+
+※ apkファイル自体はただのzipファイルである。拡張子を.zipに変えれば簡単に解凍できる。
+
+本問題はAndroid開発に精通していて、かつ使い慣れた開発環境があるだけで問題を解く時間を大幅に削減できた。
+
+### 回答のポイント
+
+「1000回連続」というフレーズがあるので、まずはデコンパイルしたソースから1000という定数値が使われている場所がないかどうかを探す必要がある。
+
+幸いなことに、定数1000にあたる箇所はMainActivity.java内で容易に発見できた。
+
+```java
+if (1000 == MainActivity.this.cnt) {
+	localTextView.setText(
+		"SECCON{" + String.valueOf((MainActivity.this.cnt +
+		 MainActivity.this.calc()) * 107) + "}");
+}
+```
+
+FLAGの値の出し方は、
+
+    ([勝った回数(1000)] + [libcalc.soのcalc()の戻り値]) * 107
+
+となることがこれでわかった。
+
+次に、上記のコードに対応するバイトコードを探し出す必要がある。
+
+javapコマンドを使ってバイトコードを解析したところ、MainActivity$1.classに次のようなバイトコードがあった。
+
+    kotetu$ javap -v MainActivity\$1.class | grep 1000
+            79: sipush        1000
+
+sipushのオペコード(オペコードって言うのか？)は0x11、[sipush byte1 byte 2]の並び、そして、1000は16進数で0x03E8なので、0x1103E8のバイトの並びを探す必要がある。
+
+バイナリエディタでMainActivity$1.classを検索したところ、412バイト目にビンゴ！な箇所を発見。[0x03 0xE8]の部分を[0x00 0x00]にしてあげれば、バイトコードの変更は完了。
+
+あとは、作成したファイルをもとのファイルと置き換え、apk再作成してジャンケンで負ければFlagがでてくるはず(勝ったら0にならないので、出てこないです・・・)。
+
+そして、実際に出てきた値は
+
+    SECCON{749}
+
+ただし、ここで注意しないといけないのは、上記方法で出てきた値は、勝った回数0の場合の値なので、方程式を解いて勝った回数1000の場合の値を求める必要があるので注意。
+
+libcalc.soのcalc()の戻り値をXとすると、勝った回数は0なので、
+
+    (0 + X) * 107 = 749
+    X = 7
+
+これで1000回勝った場合の値を計算できる。
+
+    (1000 + 7) * 107 = 107749
+
+よって、Flagは"SECCON{107749}"。
+
+以上が解法となるが、見ればわかるように、上記解法はかなりまわりくどい。
+
+バイトコードのハックの仕方を見直して、手計算で求めなくても出てくるようにしたかった・・・。
+
+なお、プロセスメモリエディタを使用してメモリ内容をハックするという手もあったのかもしれないが、使用したプロセスメモリエディタ(MemSpector)はGenymotion上では上手く使えなかった。この辺はもう少し検証が必要かもしれない。
+
+### 使用ツール
+
+まず、必要ツールを以下に列挙する。
+
++ Android実行環境
++ JDK
++ dex2jar
++ Java Decompiler
++ バイナリエディタ
+ 
+#### Android実行環境
+ 
+ どのような問題か確かめるためにもAndroid実行環境はあった方がよい。
+
+ 実機でも良いが、実機の安全やroot化できるかどうかなどを考慮して、次の2つのうちどちらかのエミューレータを使用するのが妥当に思う。
+
++ Android SDK付属のエミュレータ
++ Genymotion
+
+#### JDK
+
+一度解凍したapkを再apk化する際(jarsigner)や.classファイル中の特定バイトコードの位置を調べる際(javapコマンド)を使用するため、Android SDKが無くても最低限JDKは入れておきたい。
+
+#### dex2jar
+
+apkをただ解凍しただけだと、.classファイルが.dexファイルにまとめられてしまっており、読めない。そのため、dex2jarを使用してjarファイルへ変換しないといけない。
+
+これとは反対に、手を入れた.classファイルをapkへ戻す際に.dexファイルへ戻す際にも使用した。
+
+Android問題を解く上では非常に重要なツール。Unknown400問題でも使用した。
+
+#### Java Decompiler
+
+dex2jarでjarファイルにしたものに対して本ツールを使用して逆コンパイルをかけるために使用した。
+
+Android問題に限らず、JVM関連問題を解く上で非常に重要なツール。Unknown400問題でも使用した。
+
+#### バイナリエディタ
+
+検索できてバイナリファイルの中身を変更できるものならなんでも可。自分は使い慣れていたという理由だけで、メインのMacからわざわざWindowsへファイルを持って行ってStirlingを使用した。
+
+ちなみにMacなら0xEDを使っても良い。
+
+#### その他
+
+開発環境(Android SDK、Android Studio)については、今回の問題では特に必要ないが、一応入れておくとよいかもしれない。
+
+### 問題を解く際に参考にしたサイトなど
+
++ [AndroidのAPKを逆コンパイルする](http://qiita.com/shouta_a/items/940623d33d9f6eb3877f)
++ [Androidのアプリを逆コンパイル](http://aizuctf.hatenablog.jp/entry/2014/11/23/053929)
++ [Javaのクラスファイルをjavapとバイナリエディタで読む](http://dev.classmethod.jp/server-side/java/classfile-reading/)
++ [Android アプリケーションへのデジタル署名](http://ee72078.moo.jp/chinsan/pc/MobileApp/index.php?Android%20%E3%82%A2%E3%83%97%E3%83%AA%E3%82%B1%E3%83%BC%E3%82%B7%E3%83%A7%E3%83%B3%E3%81%B8%E3%81%AE%E3%83%87%E3%82%B8%E3%82%BF%E3%83%AB%E7%BD%B2%E5%90%8D)
 
 ## Fragment2
 
