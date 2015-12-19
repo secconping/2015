@@ -134,9 +134,11 @@ libcalc.soのcalc()の戻り値をXとすると、勝った回数は0なので�
 なお、プロセスメモリエディタを使用してメモリ内容をハックするという手もあったのかもしれないが、使用したプロセスメモリエディタ(MemSpector)はGenymotion上では上手く使えなかった。この辺はもう少し検証が必要かもしれない。
 
 (追記)
+
 soファイルのcalc()関数を解析する方法もあった。
 apkを動かすまでも無く解けたんだな・・・。
-[SECCON 2015 Online CTF Writeup][http://iwasi.hatenablog.jp/entry/2015/12/06/190557]
+
+[SECCON 2015 Online CTF Writeup](http://iwasi.hatenablog.jp/entry/2015/12/06/190557)
 
 ### 使用ツール
 
