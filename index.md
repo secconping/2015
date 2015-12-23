@@ -47,6 +47,17 @@ ping
 
 ## Start SECCON CTF
 
+換字式暗号なので、以下のとおり`tr`コマンドを使用して、フラグを複合できる。
+
+~~~~
+$ echo 'PXFR}QIVTMSZCNDKUWAGJB{LHYEO'|tr 'PXFR}QIVTMSZCNDKUWAGJB{LHYEO' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ{}'
+ABCDEFGHIJKLMNOPQRSTUVWXYZ{}
+$ echo 'EV}ZZD{DWZRA}FFDNFGQO'|tr 'PXFR}QIVTMSZCNDKUWAGJB{LHYEO' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ{}'
+{HELLOWORLDSECCONCTF}
+$ echo 'A}FFDNEVPFSGV}KZPN}GO'|tr 'PXFR}QIVTMSZCNDKUWAGJB{LHYEO' 'ABCDEFGHIJKLMNOPQRSTUVWXYZ{}'
+SECCON{HACKTHEPLANET}
+~~~~
+
 ## SECCON WARS 2015
 
 ## Unzip the file
@@ -731,6 +742,8 @@ B( ՞ਊ ՞) :~/dev/ctf/elebin/Individual_Elebin $
 ## Reverse-Engineering Hardware 2
 
 ## Last Challenge (Thank you for playing)
+
+Start SECCON CTF と同様。
 
 ## 所感
 
